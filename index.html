@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="RaceReady - A modern race training platform featuring day-to-day checklists, weather recommendations, AI coaching, and multi-plan local storage.">
+  <title>RaceReady - Race Training & Daily Checklist</title>
+  
+  <!-- Typography: Playfair Display (Serif Headings) + Plus Jakarta Sans + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header & Navigation Bar -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <a href="#hero" class="logo" aria-label="RaceReady Home">
+          <span class="logo-mark">R</span>
+          <span class="logo-text">Race<span class="logo-accent">Ready</span></span>
+        </a>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="site-nav" aria-label="Main Navigation">
+        <a href="#setupSection" class="nav-link">Plan Builder</a>
+        <a href="#summaryCard" class="nav-link">Race Targets</a>
+        <a href="#weatherSection" class="nav-link">Weather</a>
+        <a href="#coachCard" class="nav-link">AI Coach</a>
+        <a href="#planSection" class="nav-link">Checklist</a>
+      </nav>
+
+      <!-- Quick Weather Indicator -->
+      <div class="header-weather" id="headerWeatherPill" title="Local Running Weather">
+        <span id="weatherIcon" aria-hidden="true">⛅</span>
+        <span id="weatherTemp">--°</span>
+        <span id="weatherVerdict" class="verdict-pill">Loading weather...</span>
+      </div>
+
+      <!-- Header Controls: Saved Plans & Night Mode -->
+      <div class="header-actions">
+        <button type="button" class="btn btn-secondary btn-sm" id="openLibraryBtn" title="Saved Plans Library">📁 Saved Plans</button>
+        <button type="button" class="btn btn-sm btn-icon" id="themeToggleBtn" aria-label="Toggle Night Mode" title="Toggle Night Mode"><span id="themeToggleIcon">🌙</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Intro / Hero (No photo, clean & centered layout) -->
+    <section class="hero-section" id="hero">
+      <h1 class="hero-title">Train for your next race.</h1>
+      <p class="hero-subtitle">Input your race distance, date, and current fitness. Get a day-to-day checklist combining runs, strength workouts, and local weather recommendations.</p>
+    </section>
+
+    <!-- Plan Setup Card -->
+    <section class="card form-card" id="setupSection">
+      <div class="card-header-row">
+        <h2 class="card-title">1. Your Race & Fitness</h2>
+      </div>
+
+      <form id="planForm" class="setup-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="raceDistance">Target Race Distance</label>
+            <select id="raceDistance" class="form-control" required>
+              <option value="5k">5K (3.1 miles)</option>
+              <option value="10k">10K (6.2 miles)</option>
+              <option value="15k">15K (9.3 miles)</option>
+              <option value="half" selected>Half Marathon (13.1 miles)</option>
+              <option value="marathon">Marathon (26.2 miles)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="raceDate">Race Date</label>
+            <input type="date" id="raceDate" class="form-control" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="currentFitness">Current Experience Level</label>
+            <select id="currentFitness" class="form-control" required>
+              <option value="beginner">Beginner (Goal: Finish strong)</option>
+              <option value="intermediate" selected>Intermediate (Run 3-4 days/week)</option>
+              <option value="advanced">Advanced (Aiming for a fast PR)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="benchMinutes">Recent Benchmark Time (5K or 10K)</label>
+            <div class="time-input-group">
+              <input type="number" id="benchMinutes" class="form-control" placeholder="Min" min="10" max="180" value="25" required>
+              <span class="time-separator">:</span>
+              <input type="number" id="benchSeconds" class="form-control" placeholder="Sec" min="0" max="59" value="00" required>
+              <select id="benchType" class="form-control select-compact">
+                <option value="5k" selected>5K</option>
+                <option value="10k">10K</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="generateBtn">
+            <span id="btnText">Generate Daily Plan</span>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Race Predictor & Summary Banner (Hidden until plan generated) -->
+    <section class="card summary-card hidden" id="summaryCard">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Target Race</span>
+          <span class="summary-val" id="summaryRaceName">Half Marathon</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Days Until Race</span>
+          <span class="summary-val highlight" id="summaryCountdown">-- Days</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Predicted Finish Time</span>
+          <span class="summary-val gradient-text font-mono" id="summaryPredictedTime">--:--:--</span>
+          <span class="summary-note" id="summaryPredictionNote">Before training</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Recommended Race Pace</span>
+          <span class="summary-val font-mono" id="summaryTargetPace">--:-- /mi</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Weather & Running Recommendation Card -->
+    <section class="card weather-card" id="weatherSection">
+      <div class="weather-header">
+        <div>
+          <h2 class="card-title">2. Today's Running Weather</h2>
+          <p class="weather-location" id="weatherLocationName">Detecting your location...</p>
+          <p class="weather-status hidden" id="weatherStatus" role="status"></p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="detectLocationBtn">
+          📍 Detect Location
+        </button>
+      </div>
+
+      <!-- Graceful Geolocation Denial Notice & Manual City Picker (Shows if permission denied) -->
+      <div class="location-fallback-box hidden" id="locationFallbackBox">
+        <div class="fallback-copy">
+          <strong>Location permission denied or unavailable.</strong>
+          <span>Select your city below or choose a major marathon city to get local weather:</span>
+        </div>
+        <div class="fallback-controls">
+          <select id="citySelectFallback" class="form-control select-fallback">
+            <option value="42.3601,-71.0589,Boston, MA">Boston, MA (Default)</option>
+            <option value="38.6270,-90.1994,St. Louis, MO">St. Louis, MO</option>
+            <option value="40.7128,-74.0060,New York, NY">New York, NY</option>
+            <option value="41.8781,-87.6298,Chicago, IL">Chicago, IL</option>
+            <option value="37.7749,-122.4194,San Francisco, CA">San Francisco, CA</option>
+            <option value="47.6062,-122.3321,Seattle, WA">Seattle, WA</option>
+            <option value="51.5074,-0.1278,London, UK">London, UK</option>
+            <option value="52.5200,13.4050,Berlin, DE">Berlin, DE</option>
+            <option value="35.6762,139.6503,Tokyo, JP">Tokyo, JP</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-sm" id="applyCityBtn">Apply City</button>
+        </div>
+      </div>
+
+      <div class="weather-content">
+        <div class="weather-highlight">
+          <div class="weather-temp-display">
+            <span class="temp-number font-mono" id="cardTemp">--°F</span>
+            <span class="weather-desc" id="cardCondition">Checking forecast...</span>
+          </div>
+          <div class="weather-badge-box">
+            <span class="badge-title">Run Recommendation</span>
+            <span class="badge-verdict" id="cardVerdict">Evaluating...</span>
+          </div>
+        </div>
+
+        <div class="weather-details">
+          <div class="detail-item">
+            <span class="detail-label">Best Window</span>
+            <span class="detail-val" id="bestTimeToday">Calculating...</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Precipitation</span>
+            <span class="detail-val font-mono" id="cardPrecip">--%</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Wind</span>
+            <span class="detail-val font-mono" id="cardWind">-- mph</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Gear Tip</span>
+            <span class="detail-val" id="cardGear">--</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Coach Advice Card -->
+    <section class="card coach-card hidden" id="coachCard">
+      <div class="coach-header">
+        <span class="coach-badge">AI Running Coach</span>
+        <span class="coach-source" id="coachSource">Personalized Plan Advice</span>
+      </div>
+      <p class="coach-text" id="coachText">
+        Generating your tailored coaching recommendations...
+      </p>
+      <form class="coach-question-form" id="coachQuestionForm">
+        <label for="coachQuestion">Ask your coach</label>
+        <div class="coach-question-row">
+          <input type="text" id="coachQuestion" class="form-control" placeholder="How hard should my tempo run feel?" maxlength="500" required>
+          <button type="submit" class="btn btn-primary" id="askCoachBtn">Ask Coach</button>
+        </div>
+      </form>
+      <div class="coach-answer hidden" id="coachAnswer" aria-live="polite"></div>
+    </section>
+
+    <!-- Daily Checklist Section -->
+    <section class="card plan-card hidden" id="planSection">
+      <div class="plan-header">
+        <div>
+          <h2 class="card-title">3. Day-to-Day Training Checklist</h2>
+          <p class="card-subtitle">Complete daily runs, strength routines, and rest days until race day.</p>
+        </div>
+        <div class="progress-box">
+          <span class="progress-text" id="progressText">0 of 0 Completed (0%)</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Toolbar: Save to Library & Hint -->
+      <div class="checklist-actions-bar">
+        <button type="button" class="btn btn-primary btn-sm" id="saveCurrentPlanBtn">
+          💾 Save Plan to Library
+        </button>
+        <span class="save-status-hint">Save multiple different training plans in your browser so you can switch between them anytime.</span>
+      </div>
+
+      <!-- Checklist Container -->
+      <div class="checklist-container" id="checklistContainer">
+        <!-- Rendered via JavaScript -->
+      </div>
+
+      <div class="plan-footer">
+        <button type="button" class="btn btn-secondary btn-sm" id="resetPlanBtn">Reset Plan</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="printPlanBtn">Print Checklist</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Multi-Plan Storage Library Modal -->
+  <dialog class="app-modal" id="plansLibraryModal" aria-labelledby="libraryModalTitle">
+    <div class="modal-backdrop" id="libraryBackdrop"></div>
+    <div class="modal-dialog-content">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="libraryModalTitle">Saved Plans Library</h2>
+          <p class="modal-subtitle">Stored in browser LocalStorage. Switch between different race plans or review past training.</p>
+        </div>
+        <button type="button" class="btn btn-icon btn-sm" id="closeLibraryModalBtn" aria-label="Close dialog">✕</button>
+      </div>
+
+      <div class="modal-body" id="libraryListContainer">
+        <!-- Rendered by JavaScript -->
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" id="saveCurrentFromLibraryBtn">Save Current Plan</button>
+        <button type="button" class="btn btn-primary btn-sm" id="doneLibraryBtn">Done</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="site-footer">
+    <p>RaceReady - Powered by OpenAI, Open-Meteo Weather API, Geolocation, and LocalStorage.</p>
+    <p>© Jennifer Zhong 2026, CSE 2004 Website 2</p>
+  </footer>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
