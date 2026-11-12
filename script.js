@@ -556,6 +556,7 @@ const PlanEngine = {
     // Call OpenAI for personalized coach advice
     let coachAdvice = "";
     let aiPowered = false;
+    let aiPredictionSeconds = null;
     try {
       coachAdvice = await this.fetchOpenAiAdvice(inputs, pred, diffDays);
       aiPowered = true;
@@ -564,11 +565,18 @@ const PlanEngine = {
       coachAdvice = this.getLocalCoachAdvice(inputs, pred, diffDays);
     }
 
+    try {
+      aiPredictionSeconds = await this.fetchAiPrediction(inputs, pred, diffDays);
+    } catch (e) {
+      console.warn("AI prediction failed, using local improvement model:", e);
+    }
+
     const plan = {
       createdAt: new Date().toISOString(),
       diffDays,
       predictedTime: pred.predictedTimeStr,
       targetPace: pred.paceStr,
+      aiPredictionSeconds,
       coachAdvice,
       aiPowered,
       days
@@ -600,7 +608,38 @@ Adjust today's workout guidance for the current weather when appropriate.`;
     return data.text;
   },
 
-  async requestResponsesApi(prompt) {
+  async fetchAiPrediction(inputs, pred, diffDays) {
+    const schema = {
+      type: "json_schema",
+      name: "race_prediction",
+      schema: {
+        type: "object",
+        properties: {
+          predictedSeconds: { type: "number" },
+          reasoning: { type: "string" }
+        },
+        required: ["predictedSeconds", "reasoning"],
+        additionalProperties: false
+      },
+      strict: true
+    };
+    const prompt = `Estimate this runner's finish time after completing the full ${diffDays}-day training plan. Return only the requested JSON.
+Target race: ${inputs.raceDistance}
+Race date: ${inputs.raceDate}
+Experience: ${inputs.currentFitness}
+Recent ${inputs.benchType} time: ${inputs.benchMinutes}:${String(inputs.benchSeconds).padStart(2, '0')}
+Current formula baseline: ${pred.predictedTimeStr} (${pred.predictedSeconds} seconds)
+Be conservative and realistic; do not promise a dramatic improvement.
+${this.getCoachContext()}`;
+
+    const data = await this.requestResponsesApi(prompt, { text: { format: schema } });
+    const result = JSON.parse(data.text || "{}");
+    const seconds = Number(result.predictedSeconds);
+    if (!Number.isFinite(seconds)) throw new Error("The AI returned an invalid prediction.");
+    return Math.round(Math.min(pred.predictedSeconds * 1.1, Math.max(pred.predictedSeconds * 0.8, seconds)));
+  },
+
+  async requestResponsesApi(prompt, options = {}) {
     const res = await fetch("https://cse2004.com/api/openai/responses", {
       method: "POST",
       headers: {
@@ -609,7 +648,8 @@ Adjust today's workout guidance for the current weather when appropriate.`;
       },
       body: JSON.stringify({
         input: prompt,
-        model: "gpt-6-luna"
+        model: "gpt-6-luna",
+        ...options
       })
     });
 
@@ -1099,6 +1139,37 @@ const UI = {
     if (textEl) textEl.textContent = `${completedCount} of ${totalDays} Completed (${percent}%)`;
     if (fillEl) fillEl.style.width = `${percent}%`;
     this.updatePredictionDisplay();
+  },
+
+  updatePredictionDisplay() {
+    if (!AppState.plan || !AppState.inputs) return;
+
+    const completedCount = Object.keys(AppState.completedTasks).length;
+    const totalDays = AppState.plan.days?.length || 0;
+    const completionPercent = totalDays > 0 ? Math.min(100, Math.round((completedCount / totalDays) * 100)) : 0;
+    const baseline = Predictor.predict(
+      AppState.inputs.benchType,
+      AppState.inputs.benchMinutes,
+      AppState.inputs.benchSeconds,
+      AppState.inputs.raceDistance
+    );
+    const improvement = { beginner: 0.025, intermediate: 0.04, advanced: 0.055 }[AppState.inputs.currentFitness] || 0.03;
+    const localTargetSeconds = baseline.predictedSeconds * (1 - improvement);
+    const targetSeconds = AppState.plan.aiPredictionSeconds || localTargetSeconds;
+    const progressFactor = completionPercent === 0 ? 1 : completionPercent / 100;
+    const projectedSeconds = baseline.predictedSeconds + (targetSeconds - baseline.predictedSeconds) * progressFactor;
+    const paceSeconds = Math.round(projectedSeconds / Predictor.distMiles[AppState.inputs.raceDistance]);
+
+    const timeEl = document.getElementById('summaryPredictedTime');
+    const paceEl = document.getElementById('summaryTargetPace');
+    const noteEl = document.getElementById('summaryPredictionNote');
+    if (timeEl) timeEl.textContent = Predictor.formatTime(projectedSeconds);
+    if (paceEl) paceEl.textContent = `${Predictor.formatPace(paceSeconds)} /mi`;
+    if (noteEl) {
+      noteEl.textContent = completionPercent
+        ? `After ${completionPercent}% of plan`
+        : AppState.plan.aiPredictionSeconds ? 'AI estimate after full plan' : 'Estimated after full plan';
+    }
   },
 
   showToast(msg, type = "info") {
