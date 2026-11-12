@@ -861,6 +861,13 @@ const UI = {
           document.getElementById('summaryCard').classList.add('hidden');
           document.getElementById('coachCard').classList.add('hidden');
           document.getElementById('planSection').classList.add('hidden');
+          const coachQuestion = document.getElementById('coachQuestion');
+          const coachAnswer = document.getElementById('coachAnswer');
+          if (coachQuestion) coachQuestion.value = '';
+          if (coachAnswer) {
+            coachAnswer.textContent = '';
+            coachAnswer.classList.add('hidden');
+          }
           UI.showToast("Active plan reset", "info");
         }
       });
@@ -1038,6 +1045,14 @@ const UI = {
   },
 
   renderPlan(plan, inputs) {
+    const coachQuestion = document.getElementById('coachQuestion');
+    const coachAnswer = document.getElementById('coachAnswer');
+    if (coachQuestion) coachQuestion.value = '';
+    if (coachAnswer) {
+      coachAnswer.textContent = '';
+      coachAnswer.classList.add('hidden');
+    }
+
     // 1. Race Predictor Summary Banner
     const summaryCard = document.getElementById('summaryCard');
     const raceNameEl = document.getElementById('summaryRaceName');
