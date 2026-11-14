@@ -434,7 +434,8 @@ const PlanEngine = {
    * Generates a day-to-day plan from today up until race date
    */
   async generate(inputs) {
-    const raceDate = new Date(inputs.raceDate);
+    const [raceYear, raceMonth, raceDay] = inputs.raceDate.split('-').map(Number);
+    const raceDate = new Date(raceYear, raceMonth - 1, raceDay);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -457,7 +458,8 @@ const PlanEngine = {
       'marathon': 20
     }[inputs.raceDistance] || 10;
 
-    for (let i = 0; i < diffDays; i++) {
+    // Include race day in the checklist so its date matches the form input.
+    for (let i = 0; i <= diffDays; i++) {
       const currentDay = new Date(today);
       currentDay.setDate(today.getDate() + i);
 
@@ -466,7 +468,7 @@ const PlanEngine = {
       const taskId = `day_${i}_${currentDay.getTime()}`;
 
       const daysUntilRace = diffDays - i;
-      const isRaceDay = (daysUntilRace === 1);
+      const isRaceDay = (daysUntilRace === 0);
 
       let item = null;
 
